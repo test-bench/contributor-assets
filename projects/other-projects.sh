@@ -1,0 +1,3 @@
+tools=(
+  "contributor-assets"
+)
