@@ -1,4 +1,4 @@
-<img src="https://test-bench.software/test-bench-icon-130x115.png" />
+<img src="http://test-bench.software/test-bench-icon-130x115.png" />
 
 # TestBench Project Contributor Assets
 
