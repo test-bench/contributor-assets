@@ -30,21 +30,21 @@ function clone-repo {
 function pull-repo {
   name=$1
 
-  echo "Pulling: $name (master branch only)"
+  echo "Pulling: $name (main branch only)"
 
   dir=$name
   pushd $dir > /dev/null
 
   current_branch=$(git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
-  if [ master != $current_branch ]; then
-    checkout_cmd="git checkout master"
+  if [ main != $current_branch ]; then
+    checkout_cmd="git checkout main"
     run-cmd "$checkout_cmd"
   fi
 
-  pull_cmd="git pull --rebase $remote_name master"
+  pull_cmd="git pull --rebase $remote_name main"
   run-cmd "$pull_cmd"
 
-  if [ master != "$current_branch" ]; then
+  if [ main != "$current_branch" ]; then
     co_crnt_cmd="git checkout $current_branch"
     run-cmd "$co_crnt_cmd"
   fi
