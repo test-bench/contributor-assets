@@ -1,3 +1,4 @@
 tools=(
   "contributor-assets"
+  "website"
 )
