@@ -41,7 +41,7 @@ function pull-repo {
     run-cmd "$checkout_cmd"
   fi
 
-  pull_cmd="git pull --rebase $remote_name main"
+  pull_cmd="git pull --rebase $remote_name"
   run-cmd "$pull_cmd"
 
   if [ main != "$current_branch" ]; then
