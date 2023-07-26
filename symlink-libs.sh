@@ -28,6 +28,12 @@ echo
 pushd $PROJECTS_HOME > /dev/null
 
 for name in "${working_copies[@]}"; do
+  if [ "$name" = "test-bench-fixture" ]; then
+    name="test-bench-fixture-v2"
+  elif [ "$name" = "test-bench" ]; then
+    continue
+  fi
+
   echo $name
   echo "- - -"
 

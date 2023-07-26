@@ -5,4 +5,6 @@ ruby_projects=(
   test-bench-run
   test-bench-session
   test-bench-telemetry
+  test-bench
+  test-bench-isolated
 )
