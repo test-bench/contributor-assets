@@ -7,4 +7,6 @@ ruby_projects=(
   test-bench-telemetry
   test-bench
   test-bench-isolated
+
+  test-bench-fixtures-xml
 )
