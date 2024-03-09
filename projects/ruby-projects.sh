@@ -8,5 +8,6 @@ ruby_projects=(
   test-bench
   test-bench-isolated
 
+  test-bench-fixtures-compare-text
   test-bench-fixtures-xml
 )
