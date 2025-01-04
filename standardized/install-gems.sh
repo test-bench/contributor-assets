@@ -13,13 +13,6 @@ echo
 echo "Install Gems"
 echo "= = ="
 
-if [ -z "${REMOVE_GEMS:-}" ]; then
-  echo "REMOVE_GEMS is not set. Using \"on\" by default."
-  remove_gems="on"
-else
-  remove_gems=$REMOVE_GEMS
-fi
-
 if [ -z "${POSTURE:-}" ]; then
   echo "POSTURE is not set. Using \"operational\" by default."
   POSTURE="operational"
@@ -36,25 +29,37 @@ echo
 echo "Posture: $POSTURE"
 echo "Gem Home: $GEM_HOME"
 echo "Gem Executables Dir: $gem_exec_dir"
-echo "Remove Gems: $remove_gems"
 
 echo
-echo "Removing Gemfile.lock"
+echo "Removing installed gems and Gemfile.lock"
 echo "- - -"
 
-cmd="rm -rf Gemfile.lock"
+cmd="rm -rf $gem_dir Gemfile.lock"
 echo $cmd
 eval "$cmd"
 
-if [ "$remove_gems" = "on" ]; then
-  echo
-  echo "Removing installed gems"
-  echo "- - -"
+echo
+echo "Querying Runtime Gems"
+echo "- - -"
 
-  cmd="rm -rf $gem_dir"
-  echo $cmd
-  eval "$cmd"
-fi
+runtime_gems_rb_array="$(ruby -rpp -rrubygems -rrubygems/remote_fetcher <<RUBY
+gem_request_set = ::Gem::RequestSet.new
+gem_request_set.soft_missing = true
+gem_request_set.load_gemdeps('Gemfile', [:development])
+gem_request_set.resolve
+
+runtime_gems = []
+
+gem_request_set.sorted_requests.map do |activation_request|
+  next if activation_request.installed?
+
+  runtime_gems << activation_request.name
+end
+
+pp runtime_gems
+RUBY
+)"
+ruby -e "$runtime_gems_rb_array.each { |gem_name| puts gem_name }"
 
 echo
 echo "Installing gems"
@@ -63,6 +68,8 @@ echo "- - -"
 cmd="gem install --no-user-install --bindir $gem_exec_dir --no-wrappers --file Gemfile --lock"
 if [ "$POSTURE" != "operational" ]; then
   cmd="$cmd --development"
+else
+  cmd="$cmd --without development"
 fi
 echo $cmd
 eval "$cmd"
@@ -72,25 +79,27 @@ if grep -q gemspec Gemfile; then
     find . -maxdepth 2 -type f -name '*gemspec' |
       ruby -rrubygems -n -e 'spec = Gem::Specification.load($_.chomp); puts spec.name')
   )
-  cmd="gem uninstall --executables --no-user-install ${project_gems[@]}"
+  cmd="gem uninstall --force --executables --no-user-install ${project_gems[@]}"
   echo -e "\n$cmd"
   eval "$cmd"
-else
-  project_gems=()
 fi
-project_gems_rb_array="$(ruby -n -e 'puts $_.chomp.split.inspect' <<<"${project_gems[@]}")"
 
-echo
-echo "Generating gems/gems_init.rb"
-echo "- - -"
+ruby -rpp -rrubygems -rpathname <<RUBY
+gem_dir = Pathname('gems')
+gem_path = Pathname(ENV['GEM_HOME']).expand_path
+gem_exec_dir = gem_dir.join('exec')
 
-mkdir -p gems
+gem_exec_dir.mkpath
 
-ruby -rrubygems -rpathname <<RUBY
-gem_dir = Pathname('$gem_dir')
-gem_path = Pathname('$GEM_HOME')
+puts <<~TEXT
 
-gem_path_relative = gem_path.relative_path_from(File.join(Dir.pwd, 'gems'))
+Generating gems/gems_init.rb
+- - -
+TEXT
+
+executables = []
+
+gem_path_relative = gem_path.expand_path.relative_path_from(File.join(Dir.pwd, 'gems'))
 
 gem_dir.join('gems_init.rb').open('w') do |gems_init_rb|
 
@@ -103,55 +112,72 @@ gem_dir.join('gems_init.rb').open('w') do |gems_init_rb|
 
   gem_path = File.expand_path('#{gem_path_relative}', __dir__)
 
-  if Object.const_defined?(:Gem)
-    Gem.path.unshift(gem_path)
-    Gem.refresh
-    return
+  if not autoload?(:Gem)
+    if Object.const_defined?(:Gem)
+      if not Gem.path.include?(gem_path)
+        Gem.path.unshift(gem_path)
+        Gem.refresh
+      end
+      return
 
-  elsif ENV['AUTOLOAD_RUBYGEMS'] == 'on'
-    ENV['GEM_PATH'] = "\#{gem_path}:\#{ENV['GEM_PATH']}"
+    elsif ENV['AUTOLOAD_RUBYGEMS'] == 'on'
+      Kernel.autoload(:Gem, 'rubygems')
 
-    Kernel.autoload(:Gem, 'rubygems')
-
-    module Kernel
-      def gem(...)
-        require 'rubygems'
-        Kernel.gem(...)
+      module Kernel
+        def gem(...)
+          require 'rubygems'
+          Kernel.gem(...)
+        end
       end
     end
   end
+
+  if not ENV['GEM_PATH'].to_s.include?(gem_path)
+    ENV['GEM_PATH'] = "\#{gem_path}:#{ENV['GEM_PATH']}"
+  end
   RUBY
 
-  gem_require_paths = []
+  runtime_gem_require_paths = []
+  development_gem_require_paths = []
 
-  gem_request_set = ::Gem::RequestSet.new
-  gem_request_set.load_gemdeps('Gemfile')
-  gem_request_set.resolve_current
-  gem_request_set.sorted_requests.each do |activation_request|
-    spec = activation_request.spec.spec
-
-    if $project_gems_rb_array.include?(spec.name)
-      next
-    end
-
+  Gem::Specification.each_spec([gem_path.join('specifications').to_s]) do |spec|
     spec.full_require_paths.each do |full_require_path|
       full_require_path = Pathname(full_require_path)
 
       require_path = full_require_path.relative_path_from(gem_path.expand_path)
 
-      gem_require_paths << require_path.to_s
+      if $runtime_gems_rb_array.include?(spec.name)
+        puts "Load path: #{require_path}"
+        runtime_gem_require_paths << require_path.to_s
+      else
+        puts "Load path (development): #{require_path}"
+        development_gem_require_paths << require_path.to_s
+      end
+    end
 
-      puts "Load path: #{full_require_path.relative_path_from(Dir.pwd)}"
+    spec.executables.each do |executable|
+      gem_executable_path = Pathname(spec.full_gem_path).join(spec.bindir, executable)
+      relative_executable_path = gem_executable_path.relative_path_from(gem_exec_dir.expand_path)
+
+      executable_path = gem_exec_dir.join(executable)
+
+      executables << [executable_path, relative_executable_path]
     end
   end
 
   gems_init_rb.puts <<~RUBY
 
-  [
-    #{gem_require_paths.map(&:dump).join(",\n  ")}
-  ].each do |gem_require_path|
-    full_gem_require_path = File.expand_path(gem_require_path, gem_path)
-    \$LOAD_PATH.push(full_gem_require_path) if not \$LOAD_PATH.include?(full_gem_require_path)
+  #{runtime_gem_require_paths.pretty_inspect.chomp}.each do |runtime_gem_require_path|
+    require_path = File.expand_path(runtime_gem_require_path, gem_path)
+    \$LOAD_PATH.push(require_path) if not \$LOAD_PATH.include?(require_path)
+  end
+
+  init_development_gems = ENV.fetch('GEMS_INIT_DEVELOPMENT_GEMS', 'on') == 'on'
+  if init_development_gems
+    #{development_gem_require_paths.pretty_inspect.chomp}.each do |development_gem_require_path|
+      require_path = File.expand_path(development_gem_require_path, gem_path)
+      \$LOAD_PATH.push(require_path) if not \$LOAD_PATH.include?(require_path)
+    end
   end
   RUBY
 
@@ -182,36 +208,15 @@ gem_dir.join('gems_init.rb').open('w') do |gems_init_rb|
 
   puts "Wrote #{gems_init_rb.path}"
 end
-RUBY
 
-echo
-echo "Generating Executables"
-echo "- - -"
-ruby -rrubygems -rpathname <<RUBY
-gem_home = Pathname('$GEM_HOME')
+puts <<~TEXT
 
-gem_exec_dir = Pathname('$gem_exec_dir')
-if not gem_exec_dir.directory?
-  gem_exec_dir.mkdir
-end
+Generating Executables
+- - -
+TEXT
 
-gem_request_set = ::Gem::RequestSet.new
-gem_request_set.load_gemdeps('Gemfile')
-gem_request_set.resolve_current
-gem_request_set.sorted_requests.each do |activation_request|
-  spec = activation_request.spec.spec
-
-  if $project_gems_rb_array.include?(spec.name)
-    next
-  end
-
-  spec.executables.each do |executable|
-    gem_executable_path = Pathname(spec.full_gem_path).join(spec.bindir, executable)
-
-    relative_executable_path = gem_executable_path.relative_path_from(gem_exec_dir.expand_path)
-
-    executable_path = gem_exec_dir.join(executable)
-
+if executables.any?
+  executables.each do |executable_path, relative_executable_path|
     if executable_path.symlink?
       executable_path.unlink
       puts "Found symbolic link at #{executable_path}; it will be replaced by this script"
@@ -221,14 +226,16 @@ gem_request_set.sorted_requests.each do |activation_request|
 
     executable_path.open('w', 0755) do |exec|
       exec.write(<<~RUBY)
-#!/usr/bin/env ruby
-require_relative '../gems_init.rb'
-load File.expand_path('#{relative_executable_path}', __dir__)
+      #!/usr/bin/env ruby
+      require_relative '../gems_init.rb'
+      load File.expand_path('#{relative_executable_path}', __dir__)
       RUBY
     end
 
     puts "Wrote #{executable_path}"
   end
+else
+  puts "No executables"
 end
 RUBY
 
