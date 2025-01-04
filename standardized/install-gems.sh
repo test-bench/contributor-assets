@@ -227,7 +227,7 @@ if executables.any?
     executable_path.open('w', 0755) do |exec|
       exec.write(<<~RUBY)
       #!/usr/bin/env ruby
-      require_relative '../gems_init.rb'
+      require_relative '../../load_path.rb'
       load File.expand_path('#{relative_executable_path}', __dir__)
       RUBY
     end
