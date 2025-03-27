@@ -1,3 +1,5 @@
 set -e
 
-archived_projects=()
+archived_projects=(
+  test-telemetry
+)
