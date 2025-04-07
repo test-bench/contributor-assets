@@ -1,6 +1,7 @@
 set -e
 
 archived_projects=(
-  test-telemetry
+  test-output-writer
   test-session
+  test-telemetry
 )
