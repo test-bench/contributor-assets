@@ -44,7 +44,8 @@ echo "- - -"
 
 runtime_gems_rb_array="$(ruby -rpp -rrubygems -rrubygems/remote_fetcher <<RUBY
 gem_request_set = ::Gem::RequestSet.new
-gem_request_set.soft_missing = true
+gem_request_set.prerelease = true
+gem_request_set.soft_missing = false
 gem_request_set.load_gemdeps('Gemfile', [:development])
 gem_request_set.resolve
 
