@@ -12,4 +12,5 @@ ruby_projects=(
   test-bench-session
   test-bench-output
   test-bench-fixture
+  test-bench-run
 )
