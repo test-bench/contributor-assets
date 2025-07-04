@@ -11,4 +11,5 @@ ruby_projects=(
   test-bench-telemetry
   test-bench-session
   test-bench-output
+  test-bench-fixture
 )
