@@ -14,4 +14,5 @@ ruby_projects=(
   test-bench-fixture
   test-bench-run
   test-bench-executable
+  test-bench
 )
