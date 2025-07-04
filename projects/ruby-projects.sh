@@ -6,6 +6,7 @@ projects_dir="$(dirname "${BASH_SOURCE[0]}")"
 
 ruby_projects=(
   template-ruby-project
+  import-constants
   test-bench-isolated
   test-bench-random
   test-bench-telemetry
