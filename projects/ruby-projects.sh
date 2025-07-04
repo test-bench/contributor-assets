@@ -8,4 +8,5 @@ ruby_projects=(
   template-ruby-project
   test-bench-isolated
   test-bench-random
+  test-bench-telemetry
 )
