@@ -16,7 +16,7 @@ else
 fi
 
 if [ -z "${GIT_AUTHORITY_PATH:-}" ]; then
-  export GIT_AUTHORITY_PATH="git@github.com:test-bench-demo"
+  export GIT_AUTHORITY_PATH="git@github.com:test-bench"
 else
   printf "\e[1mNotice: GIT_AUTHORITY_PATH is overridden: $GIT_AUTHORITY_PATH\e[m\n"
 fi
@@ -28,15 +28,15 @@ else
 fi
 
 if [ -z "${RUBYGEMS_PUBLIC_AUTHORITY_ACCESS_KEY:-}" ]; then
-  printf "\e[33mWarning: RUBYGEMS_PUBLIC_AUTHORITY_ACCESS_KEY is not set; publishing public facing gems won't be possible\e[m\n"
+  printf "\e[33mWarning: RUBYGEMS_PUBLIC_AUTHORITY_ACCESS_KEY is not set; publishing public facing gems may fail\e[m\n"
 fi
 
 if [ -z "${RUBYGEMS_PRIVATE_AUTHORITY:-}" ]; then
-  export RUBYGEMS_PRIVATE_AUTHORITY="https://rubygems.pkg.github.com/test-bench-demo"
+  export RUBYGEMS_PRIVATE_AUTHORITY="https://rubygems.pkg.github.com/test-bench"
 else
   printf "\e[1mNotice: RUBYGEMS_PRIVATE_AUTHORITY_PATH is overridden: $RUBYGEMS_PRIVATE_AUTHORITY\e[m\n"
 fi
 
 if [ -z "${RUBYGEMS_PRIVATE_AUTHORITY_ACCESS_KEY:-}" ]; then
-  printf "\e[33mWarning: RUBYGEMS_PRIVATE_AUTHORITY_ACCESS_KEY is not set; publishing internal gems won't be possible\e[m\n"
+  printf "\e[33mWarning: RUBYGEMS_PRIVATE_AUTHORITY_ACCESS_KEY is not set; publishing internal gems may fail\e[m\n"
 fi
