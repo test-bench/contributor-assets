@@ -12,4 +12,5 @@ ruby_projects=(
   test-bench-run
   test-bench-executable
   test-bench
+  test-bench-run-parallel
 )
